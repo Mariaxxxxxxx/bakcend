@@ -15,6 +15,14 @@ dotenv.config();
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 app.use(express.json());
+app.get("/test-env", (req, res) => { //algo que usaste para una prueba del render //
+  res.json({
+    OPENAI: process.env.OPENAI_API_KEY ? "✅ OK" : "❌ FALTA",
+    MONGO: process.env.MONGODB_URI ? "✅ OK" : "❌ FALTA",
+    MODEL: process.env.IA_MODEL,
+    PORT: process.env.PORT
+  });
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
