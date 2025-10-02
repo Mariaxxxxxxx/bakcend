@@ -7,32 +7,37 @@ import { OpenAI } from "openai";
 import http from "http";
 import { Server } from "socket.io";
 
+// -------------------------------
+// Configuración inicial
+// -------------------------------
 dotenv.config();
+
+const app = express(); // 👈 Primero creamos la app
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
 
 // -------------------------------
 // App + HTTP server + Socket.IO
 // -------------------------------
-const app = express();
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
-app.use(express.json());
-app.get("/test-env", (req, res) => { //algo que usaste para una prueba del render //
-  res.json({
-    OPENAI: process.env.OPENAI_API_KEY ? "✅ OK" : "❌ FALTA",
-    MONGO: process.env.MONGODB_URI ? "✅ OK" : "❌ FALTA",
-    MODEL: process.env.IA_MODEL,
-    PORT: process.env.PORT
-  });
-});
-
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: process.env.CORS_ORIGIN || "*" },
 });
 
 // -------------------------------
-/* MongoDB (usa MONGODB_URI del .env) */
+// Prueba de entorno (Render test)
+// -------------------------------
+app.get("/test-env", (req, res) => {
+  res.json({
+    OPENAI: process.env.OPENAI_API_KEY ? "✅ OK" : "❌ FALTA",
+    MONGO: process.env.MONGODB_URI ? "✅ OK" : "❌ FALTA",
+    MODEL: process.env.IA_MODEL,
+    PORT: process.env.PORT,
+  });
+});
+
+// -------------------------------
+// Conexión a MongoDB Atlas
 // -------------------------------
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
@@ -49,7 +54,7 @@ mongoose
   });
 
 // -------------------------------
-// OpenAI
+// Configuración de OpenAI
 // -------------------------------
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Falta OPENAI_API_KEY en .env");
@@ -59,7 +64,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const IA_MODEL = process.env.IA_MODEL || "gpt-4o-mini";
 
 // -------------------------------
-// Schema y modelo
+// Esquema y modelo de uso
 // -------------------------------
 const UsoSchema = new mongoose.Schema({
   grado: { type: String, required: true },
@@ -70,18 +75,15 @@ const UsoSchema = new mongoose.Schema({
 const Uso = mongoose.model("Uso", UsoSchema);
 
 // -------------------------------
-// Salud
+// Rutas
 // -------------------------------
-app.get("/", (_req, res) => res.send("OK"));
+app.get("/", (_req, res) => res.send("OK ✅ Backend activo en Render"));
 
-// -------------------------------
 // Chat principal
-// -------------------------------
 app.post("/api/chat", async (req, res) => {
   try {
     let { grado, tema } = req.body || {};
 
-    // Normalización y validación
     grado = typeof grado === "string" ? grado.trim() : "";
     tema = typeof tema === "string" ? tema.trim() : "";
 
@@ -104,10 +106,8 @@ app.post("/api/chat", async (req, res) => {
     const respuesta =
       completion?.choices?.[0]?.message?.content?.trim() || "No hay respuesta.";
 
-    // Guardar en Mongo
     const nuevoRegistro = await Uso.create({ grado, tema, respuesta });
 
-    // Emitir en tiempo real
     io.emit("nuevo-uso", {
       grado,
       tema,
@@ -118,14 +118,11 @@ app.post("/api/chat", async (req, res) => {
     res.json({ respuesta });
   } catch (err) {
     console.error("❌ Error en /api/chat:", err);
-    // Caso típico del error que viste: content null -> 400 de OpenAI
     res.status(500).json({ error: "Error al procesar la respuesta." });
   }
 });
 
-// -------------------------------
 // Historial por grado
-// -------------------------------
 app.get("/api/historial/:grado", async (req, res) => {
   try {
     const { grado } = req.params;
@@ -138,9 +135,9 @@ app.get("/api/historial/:grado", async (req, res) => {
 });
 
 // -------------------------------
-// Arranque
+// Arranque del servidor
 // -------------------------------
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
