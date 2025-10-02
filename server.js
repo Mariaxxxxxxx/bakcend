@@ -8,6 +8,8 @@ import http from "http";
 import { Server } from "socket.io";
 
 dotenv.config();
+app.use(express.json());
+app.use(cors());
 
 // -------------------------------
 // App + HTTP server + Socket.IO
